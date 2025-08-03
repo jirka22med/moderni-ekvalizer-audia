@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Audio Editor - Hvězdná flotila 🚀</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .section h2 {
+            color: #4ecdc4;
+            margin-top: 0;
+            font-size: 1.5em;
+            border-bottom: 2px solid #4ecdc4;
+            padding-bottom: 10px;
+        }
+        
+        .input-file {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px dashed #4ecdc4;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .input-file:hover {
+            background: rgba(78, 205, 196, 0.2);
+            border-color: #ff6b6b;
+        }
+        
+        .audio-player {
+            width: 100%;
+            margin-bottom: 15px;
+            height: 50px;
+        }
+        
+        .eq-sliders {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+        
+        .eq-slider {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        
+        .eq-slider label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+        
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+            outline: none;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+            cursor: pointer;
+        }
+        
+        .slider:hover {
+            opacity: 1;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            border: none;
+        }
+        
+        .effects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .effect-control {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .effect-control label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+        
+        .button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            color: white;
+            padding: 15px 25px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 8px 4px;
+            cursor: pointer;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        .button.playing {
+            background: linear-gradient(45deg, #ff4757, #2ed573);
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
+        }
+        
+        #visualization {
+            width: 100%;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            border: 2px solid #4ecdc4;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: rgba(46, 213, 115, 0.2);
+            border: 1px solid #2ed573;
+            color: #2ed573;
+        }
+        
+        .status.error {
+            background: rgba(255, 71, 87, 0.2);
+            border: 1px solid #ff4757;
+            color: #ff4757;
+        }
+        
+        .status.info {
+            background: rgba(78, 205, 196, 0.2);
+            border: 1px solid #4ecdc4;
+            color: #4ecdc4;
+        }
+        
+        .value-display {
+            font-size: 12px;
+            color: #ccc;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Audio Editor - Hvězdná flotila 🚀</h1>
+            <p>Admirál Claude.AI k vašim službám, více admirále Jiříku!</p>
+        </div>
+
+        <div class="section" id="upload-section">
+            <h2>🎼 Nahrát písničku (MP3/WAV)</h2>
+            <input type="file" id="file-input" class="input-file" accept="audio/*">
+            <div id="upload-status"></div>
+        </div>
+
+        <div class="section" id="before-edit-section" style="display: none;">
+            <h2>🎧 Poslech před úpravou</h2>
+            <audio id="audio-before" class="audio-player" controls></audio>
+        </div>
+
+        <div class="section" id="equalizer-section" style="display: none;">
+            <h2>🎚️ Ekvalizér</h2>
+            <div class="eq-sliders">
+                <div class="eq-slider">
+                    <label for="eq-32">32 Hz</label>
+                    <input type="range" id="eq-32" class="slider" min="-12" max="12" value="0" step="0.1">
+                    <div class="value-display" id="eq-32-value">0 dB</div>
+                </div>
+                <div class="eq-slider">
+                    <label for="eq-64">64 Hz</label>
+                    <input type="range" id="eq-64" class="slider" min="-12" max="12" value="0" step="0.1">
+                    <div class="value-display" id="eq-64-value">0 dB</div>
+                </div>
+                <div class="eq-slider">
+                    <label for="eq-125">125 Hz</label>
+                    <input type="range" id="eq-125" class="slider" min="-12" max="12" value="0" step="0.1">
+                    <div class="value-display" id="eq-125-value">0 dB</div>
+                </div>
+                <div class="eq-slider">
+                    <label for="eq-250">250 Hz</label>
+                    <input type="range" id="eq-250" class="slider" min="-12" max="12" value="0" step="0.1">
+                    <div class="value-display" id="eq-250-value">0 dB</div>
+                </div>
+                <div class="eq-slider">
+                    <label for="eq-500">500 Hz</label>
+                    <input type="range" id="eq-500" class="slider" min="-12" max="12" value="0" step="0.1">
+                    <div class="value-display" id="eq-500-value">0 dB</div>
+                </div>
+                <div class="eq-slider">
+                    <label for="eq-1k">1 kHz</label>
+                    <input type="range" id="eq-1k" class="slider" min="-12" max="12" value="0" step="0.1">
+                    <div class="value-display" id="eq-1k-value">0 dB</div>
+                </div>
+                <div class="eq-slider">
+                    <label for="eq-2k">2 kHz</label>
+                    <input type="range" id="eq-2k" class="slider" min="-12" max="12" value="0" step="0.1">
+                    <div class="value-display" id="eq-2k-value">0 dB</div>
+                </div>
+                <div class="eq-slider">
+                    <label for="eq-4k">4 kHz</label>
+                    <input type="range" id="eq-4k" class="slider" min="-12" max="12" value="0" step="0.1">
+                    <div class="value-display" id="eq-4k-value">0 dB</div>
+                </div>
+            </div>
+              
+            <h3>🎛️ Další efekty</h3>
+            <div class="effects-grid">
+                <div class="effect-control">
+                    <label for="volume">🔊 Hlasitost:</label>
+                    <input type="range" id="volume" class="slider" min="0" max="2" step="0.01" value="1">
+                    <div class="value-display" id="volume-value">100%</div>
+                </div>
+                <div class="effect-control">
+                    <label for="reverb">🏛️ Reverb:</label>
+                    <input type="range" id="reverb" class="slider" min="0" max="1" step="0.01" value="0">
+                    <div class="value-display" id="reverb-value">0%</div>
+                </div>
+                <div class="effect-control">
+                    <label for="delay">⏱️ Delay:</label>
+                    <input type="range" id="delay" class="slider" min="0" max="1" step="0.01" value="0">
+                    <div class="value-display" id="delay-value">0%</div>
+                </div>
+                <div class="effect-control">
+                    <label for="chorus">🌊 Chorus:</label>
+                    <input type="range" id="chorus" class="slider" min="0" max="1" step="0.01" value="0">
+                    <div class="value-display" id="chorus-value">0%</div>
+                </div>
+                <div class="effect-control">
+                    <label for="distortion">🔥 Distortion:</label>
+                    <input type="range" id="distortion" class="slider" min="0" max="1" step="0.01" value="0">
+                    <div class="value-display" id="distortion-value">0%</div>
+                </div>
+                <div class="effect-control">
+                    <label for="compressor">🗜️ Compressor:</label>
+                    <input type="range" id="compressor" class="slider" min="-60" max="0" step="1" value="-24">
+                    <div class="value-display" id="compressor-value">-24 dB</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" id="after-edit-section" style="display: none;">
+            <h2>🎵 Upravenou písničku</h2>
+            <div style="text-align: center;">
+                <button id="play-button" class="button">▶️ Přehrát upravenou písničku</button>
+                <button id="reset-button" class="button">🔄 Reset všech efektů</button>
+                <button id="download-button" class="button">💾 Stáhnout upravenou písničku</button>
+            </div>
+            <div id="playback-status"></div>
+        </div>
+
+        <div class="section" id="visualization-section" style="display: none;">
+            <h2>📊 Vizualizace zvuku</h2>
+            <canvas id="visualization"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.20/Tone.min.js"></script>
+    <script>
+        class AudioEditor {
+            constructor() {
+                this.audioBuffer = null;
+                this.player = null;
+                this.equalizer = [];
+                this.effects = {};
+                this.isPlaying = false;
+                this.analyser = null;
+                this.animationId = null;
+                this.canvas = null;
+                this.ctx = null;
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupEventListeners();
+                this.setupCanvas();
+                this.showStatus('info', '🚀 Audio Editor připraven k použití!');
+            }
+            
+            setupEventListeners() {
+                // File upload
+                document.getElementById('file-input').addEventListener('change', (e) => this.handleFileUpload(e));
+                
+                // Play button
+                document.getElementById('play-button').addEventListener('click', () => this.togglePlayback());
+                
+                // Reset button
+                document.getElementById('reset-button').addEventListener('click', () => this.resetAllEffects());
+                
+                // Download button
+                document.getElementById('download-button').addEventListener('click', () => this.downloadAudio());
+                
+                // EQ sliders
+                const eqSliders = ['32', '64', '125', '250', '500', '1k', '2k', '4k'];
+                eqSliders.forEach(freq => {
+                    const slider = document.getElementById(`eq-${freq}`);
+                    slider.addEventListener('input', () => {
+                        this.updateEqualizer();
+                        this.updateValueDisplay(`eq-${freq}`, slider.value + ' dB');
+                    });
+                });
+                
+                // Effect sliders
+                const effectSliders = ['volume', 'reverb', 'delay', 'chorus', 'distortion', 'compressor'];
+                effectSliders.forEach(effect => {
+                    const slider = document.getElementById(effect);
+                    slider.addEventListener('input', () => {
+                        this.updateEffects();
+                        this.updateEffectValueDisplay(effect, slider.value);
+                    });
+                });
+            }
+            
+            setupCanvas() {
+                this.canvas = document.getElementById('visualization');
+                this.ctx = this.canvas.getContext('2d');
+                this.canvas.width = this.canvas.offsetWidth;
+                this.canvas.height = 200;
+            }
+            
+            async handleFileUpload(event) {
+                try {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    
+                    this.showStatus('info', '📁 Načítání souboru...');
+                    
+                    const url = URL.createObjectURL(file);
+                    document.getElementById('audio-before').src = url;
+                    
+                    const response = await fetch(url);
+                    const arrayBuffer = await response.arrayBuffer();
+                    this.audioBuffer = await Tone.context.decodeAudioData(arrayBuffer);
+                    
+                    await this.setupAudioChain();
+                    this.showSections();
+                    this.showStatus('success', `✅ Soubor "${file.name}" úspěšně načten!`);
+                    
+                } catch (error) {
+                    console.error('Error loading file:', error);
+                    this.showStatus('error', '❌ Chyba při načítání souboru!');
+                }
+            }
+            
+            async setupAudioChain() {
+                try {
+                    // Cleanup previous setup
+                    if (this.player) {
+                        this.player.disconnect();
+                        this.player.dispose();
+                    }
+                    
+                    // Create new player
+                    this.player = new Tone.Player(this.audioBuffer);
+                    
+                    // Create 8-band equalizer
+                    const frequencies = [32, 64, 125, 250, 500, 1000, 2000, 4000];
+                    this.equalizer = frequencies.map((freq, index) => {
+                        const filter = new Tone.Filter({
+                            frequency: freq,
+                            type: 'peaking',
+                            Q: 1,
+                            gain: 0
+                        });
+                        return filter;
+                    });
+                    
+                    // Create effects
+                    this.effects = {
+                        reverb: new Tone.Reverb({ wet: 0, decay: 1.5, roomSize: 0.7 }),
+                        delay: new Tone.FeedbackDelay({ wet: 0, feedback: 0.3, delayTime: "8n" }),
+                        chorus: new Tone.Chorus({ wet: 0, frequency: 1.5, depth: 0.7, spread: 180 }),
+                        distortion: new Tone.Distortion({ wet: 0, distortion: 0.4 }),
+                        compressor: new Tone.Compressor({ threshold: -24, ratio: 3, attack: 0.03, release: 0.25 })
+                    };
+                    
+                    // Wait for reverb to be ready
+                    await this.effects.reverb.ready;
+                    
+                    // Create audio chain
+                    const chain = [
+                        this.player,
+                        ...this.equalizer,
+                        this.effects.reverb,
+                        this.effects.delay,
+                        this.effects.chorus,
+                        this.effects.distortion,
+                        this.effects.compressor
+                    ];
+                    
+                    Tone.connectSeries(...chain, Tone.Destination);
+                    
+                    // Setup analyzer for visualization
+                    this.analyser = new Tone.Analyser('waveform', 512);
+                    this.effects.compressor.connect(this.analyser);
+                    
+                    this.updateAllEffects();
+                    
+                } catch (error) {
+                    console.error('Error setting up audio chain:', error);
+                    this.showStatus('error', '❌ Chyba při nastavování audio řetězce!');
+                }
+            }
+            
+            updateEqualizer() {
+                if (!this.equalizer.length) return;
+                
+                const eqSliders = ['32', '64', '125', '250', '500', '1k', '2k', '4k'];
+                eqSliders.forEach((freq, index) => {
+                    if (this.equalizer[index]) {
+                        const value = parseFloat(document.getElementById(`eq-${freq}`).value);
+                        this.equalizer[index].gain.value = value;
+                    }
+                });
+            }
+            
+            updateEffects() {
+                if (!this.player || !this.effects) return;
+                
+                try {
+                    // Volume
+                    const volume = parseFloat(document.getElementById('volume').value);
+                    this.player.volume.value = Tone.gainToDb(volume);
+                    
+                    // Effects
+                    this.effects.reverb.wet.value = parseFloat(document.getElementById('reverb').value);
+                    this.effects.delay.wet.value = parseFloat(document.getElementById('delay').value);
+                    this.effects.chorus.wet.value = parseFloat(document.getElementById('chorus').value);
+                    this.effects.distortion.wet.value = parseFloat(document.getElementById('distortion').value);
+                    this.effects.compressor.threshold.value = parseFloat(document.getElementById('compressor').value);
+                    
+                } catch (error) {
+                    console.error('Error updating effects:', error);
+                }
+            }
+            
+            updateAllEffects() {
+                this.updateEqualizer();
+                this.updateEffects();
+                this.updateAllValueDisplays();
+            }
+            
+            updateValueDisplay(id, value) {
+                const display = document.getElementById(`${id}-value`);
+                if (display) display.textContent = value;
+            }
+            
+            updateEffectValueDisplay(effect, value) {
+                let displayValue = value;
+                switch (effect) {
+                    case 'volume':
+                        displayValue = Math.round(parseFloat(value) * 100) + '%';
+                        break;
+                    case 'reverb':
+                    case 'delay':
+                    case 'chorus':
+                    case 'distortion':
+                        displayValue = Math.round(parseFloat(value) * 100) + '%';
+                        break;
+                    case 'compressor':
+                        displayValue = value + ' dB';
+                        break;
+                }
+                this.updateValueDisplay(effect, displayValue);
+            }
+            
+            updateAllValueDisplays() {
+                // EQ displays
+                const eqSliders = ['32', '64', '125', '250', '500', '1k', '2k', '4k'];
+                eqSliders.forEach(freq => {
+                    const slider = document.getElementById(`eq-${freq}`);
+                    this.updateValueDisplay(`eq-${freq}`, slider.value + ' dB');
+                });
+                
+                // Effect displays
+                const effectSliders = ['volume', 'reverb', 'delay', 'chorus', 'distortion', 'compressor'];
+                effectSliders.forEach(effect => {
+                    const slider = document.getElementById(effect);
+                    this.updateEffectValueDisplay(effect, slider.value);
+                });
+            }
+            
+            async togglePlayback() {
+                if (!this.player) return;
+                
+                try {
+                    await Tone.start();
+                    
+                    const button = document.getElementById('play-button');
+                    
+                    if (this.isPlaying) {
+                        this.player.stop();
+                        button.textContent = "▶️ Přehrát upravenou písničku";
+                        button.classList.remove('playing');
+                        this.isPlaying = false;
+                        this.stopVisualization();
+                        this.showPlaybackStatus('⏹️ Přehrávání zastaveno');
+                    } else {
+                        this.player.start();
+                        button.textContent = "⏸️ Zastavit přehrávání";
+                        button.classList.add('playing');
+                        this.isPlaying = true;
+                        this.startVisualization();
+                        this.showPlaybackStatus('▶️ Přehrávání spuštěno');
+                        
+                        // Auto-stop when finished
+                        this.player.onstop = () => {
+                            if (this.isPlaying) {
+                                button.textContent = "▶️ Přehrát upravenou písničku";
+                                button.classList.remove('playing');
+                                this.isPlaying = false;
+                                this.stopVisualization();
+                                this.showPlaybackStatus('✅ Přehrávání dokončeno');
+                            }
+                        };
+                    }
+                } catch (error) {
+                    console.error('Error toggling playback:', error);
+                    this.showStatus('error', '❌ Chyba při přehrávání!');
+                }
+            }
+            
+            resetAllEffects() {
+                // Reset EQ
+                const eqSliders = ['32', '64', '125', '250', '500', '1k', '2k', '4k'];
+                eqSliders.forEach(freq => {
+                    document.getElementById(`eq-${freq}`).value = 0;
+                });
+                
+                // Reset effects
+                document.getElementById('volume').value = 1;
+                document.getElementById('reverb').value = 0;
+                document.getElementById('delay').value = 0;
+                document.getElementById('chorus').value = 0;
+                document.getElementById('distortion').value = 0;
+                document.getElementById('compressor').value = -24;
+                
+                this.updateAllEffects();
+                this.showStatus('success', '🔄 Všechny efekty resetovány!');
+            }
+            
+            startVisualization() {
+                if (!this.analyser || !this.canvas) return;
+                
+                const draw = () => {
+                    if (!this.isPlaying) return;
+                    
+                    this.animationId = requestAnimationFrame(draw);
+                    
+                    const waveform = this.analyser.getValue();
+                    const width = this.canvas.width;
+                    const height = this.canvas.height;
+                    
+                    this.ctx.clearRect(0, 0, width, height);
+                    
+                    // Draw waveform
+                    this.ctx.beginPath();
+                    this.ctx.strokeStyle = '#00ff00';    // Zelená
+                    this.ctx.lineWidth = 2;
+                    
+                    for (let i = 0; i < waveform.length; i++) {
+                        const x = (i / waveform.length) * width;
+                        const y = ((waveform[i] + 1) / 2) * height;
+                        
+                        if (i === 0) {
+                            this.ctx.moveTo(x, y);
+                        } else {
+                            this.ctx.lineTo(x, y);
+                        }
+                    }
+                    
+                    this.ctx.stroke();
+                    
+                    // Draw frequency bars
+                    this.ctx.fillStyle = 'rgba(255, 107, 107, 0.6)';
+                    const barWidth = width / waveform.length;
+                    
+                    for (let i = 0; i < waveform.length; i += 4) {
+                        const barHeight = Math.abs(waveform[i]) * height;
+                        const x = (i / waveform.length) * width;
+                        const y = height - barHeight;
+                        
+                        this.ctx.fillRect(x, y, barWidth * 2, barHeight);
+                    }
+                };
+                
+                draw();
+            }
+            
+            stopVisualization() {
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
+                
+                if (this.ctx && this.canvas) {
+                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                }
+            }
+            
+            async downloadAudio() {
+                if (!this.player || !this.audioBuffer) {
+                    this.showStatus('error', '❌ Není co stáhnout!');
+                    return;
+                }
+                
+                try {
+                    this.showStatus('info', '💾 Generování souboru...');
+                    
+                    // Create offline context for rendering
+                    const duration = this.audioBuffer.duration;
+                    const sampleRate = 44100;
+                    const offlineContext = new OfflineAudioContext({
+                        numberOfChannels: 2,
+                        length: sampleRate * duration,
+                        sampleRate: sampleRate,
+                    });
+                    
+                    // Create offline audio chain
+                    const offlinePlayer = new Tone.Player({
+                        url: this.audioBuffer,
+                        context: offlineContext,
+                    });
+                    
+                    // Apply current settings to offline chain
+                    const frequencies = [32, 64, 125, 250, 500, 1000, 2000, 4000];
+                    const offlineEqualizer = frequencies.map((freq, index) => {
+                        const eqSliders = ['32', '64', '125', '250', '500', '1k', '2k', '4k'];
+                        const gain = parseFloat(document.getElementById(`eq-${eqSliders[index]}`).value);
+                        return new Tone.Filter({
+                            frequency: freq,
+                            type: 'peaking',
+                            Q: 1,
+                            gain: gain,
+                            context: offlineContext,
+                        });
+                    });
+                    
+                    const offlineEffects = {
+                        reverb: new Tone.Reverb({
+                            wet: parseFloat(document.getElementById('reverb').value),
+                            decay: 1.5,
+                            roomSize: 0.7,
+                            context: offlineContext,
+                        }),
+                        delay: new Tone.FeedbackDelay({
+                            wet: parseFloat(document.getElementById('delay').value),
+                            feedback: 0.3,
+                            delayTime: "8n",
+                            context: offlineContext,
+                        }),
+                        chorus: new Tone.Chorus({
+                            wet: parseFloat(document.getElementById('chorus').value),
+                            frequency: 1.5,
+                            depth: 0.7,
+                            spread: 180,
+                            context: offlineContext,
+                        }),
+                        distortion: new Tone.Distortion({
+                            wet: parseFloat(document.getElementById('distortion').value),
+                            distortion: 0.4,
+                            context: offlineContext,
+                        }),
+                        compressor: new Tone.Compressor({
+                            threshold: parseFloat(document.getElementById('compressor').value),
+                            ratio: 3,
+                            attack: 0.03,
+                            release: 0.25,
+                            context: offlineContext,
+                        })
+                    };
+                    
+                    // Wait for reverb to be ready
+                    await offlineEffects.reverb.ready;
+                    
+                    // Connect offline chain
+                    const offlineChain = [
+                        offlinePlayer,
+                        ...offlineEqualizer,
+                        offlineEffects.reverb,
+                        offlineEffects.delay,
+                        offlineEffects.chorus,
+                        offlineEffects.distortion,
+                        offlineEffects.compressor
+                    ];
+                    
+                    Tone.connectSeries(...offlineChain, offlineContext.destination);
+                    
+                    // Set volume
+                    const volume = parseFloat(document.getElementById('volume').value);
+                    offlinePlayer.volume.value = Tone.gainToDb(volume);
+                    
+                    // Start offline rendering
+                    offlinePlayer.start(0);
+                    const renderedBuffer = await offlineContext.startRendering();
+                    
+                    // Convert to downloadable format
+                    const audioBlob = this.bufferToWave(renderedBuffer);
+                    const url = URL.createObjectURL(audioBlob);
+                    
+                    // Create download link
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'edited_audio.wav';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    this.showStatus('success', '✅ Soubor úspěšně stažen!');
+                    
+                } catch (error) {
+                    console.error('Error downloading audio:', error);
+                    this.showStatus('error', '❌ Chyba při stahování!');
+                }
+            }
+            
+            bufferToWave(buffer) {
+                const length = buffer.length;
+                const numberOfChannels = buffer.numberOfChannels;
+                const sampleRate = buffer.sampleRate;
+                const arrayBuffer = new ArrayBuffer(44 + length * numberOfChannels * 2);
+                const view = new DataView(arrayBuffer);
+                
+                // WAV header
+                const writeString = (offset, string) => {
+                    for (let i = 0; i < string.length; i++) {
+                        view.setUint8(offset + i, string.charCodeAt(i));
+                    }
+                };
+                
+                writeString(0, 'RIFF');
+                view.setUint32(4, 36 + length * numberOfChannels * 2, true);
+                writeString(8, 'WAVE');
+                writeString(12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true);
+                view.setUint16(22, numberOfChannels, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, sampleRate * numberOfChannels * 2, true);
+                view.setUint16(32, numberOfChannels * 2, true);
+                view.setUint16(34, 16, true);
+                writeString(36, 'data');
+                view.setUint32(40, length * numberOfChannels * 2, true);
+                
+                // Convert float samples to 16-bit PCM
+                let offset = 44;
+                for (let i = 0; i < length; i++) {
+                    for (let channel = 0; channel < numberOfChannels; channel++) {
+                        const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i]));
+                        view.setInt16(offset, sample * 0x7FFF, true);
+                        offset += 2;
+                    }
+                }
+                
+                return new Blob([arrayBuffer], { type: 'audio/wav' });
+            }
+            
+            showSections() {
+                document.getElementById('before-edit-section').style.display = 'block';
+                document.getElementById('equalizer-section').style.display = 'block';
+                document.getElementById('after-edit-section').style.display = 'block';
+                document.getElementById('visualization-section').style.display = 'block';
+            }
+            
+            showStatus(type, message) {
+                const statusDiv = document.getElementById('upload-status');
+                statusDiv.className = `status ${type}`;
+                statusDiv.textContent = message;
+                
+                // Auto-hide after 5 seconds for success/info messages
+                if (type === 'success' || type === 'info') {
+                    setTimeout(() => {
+                        statusDiv.textContent = '';
+                        statusDiv.className = '';
+                    }, 5000);
+                }
+            }
+            
+            showPlaybackStatus(message) {
+                const statusDiv = document.getElementById('playback-status');
+                statusDiv.className = 'status info';
+                statusDiv.textContent = message;
+                
+                setTimeout(() => {
+                    statusDiv.textContent = '';
+                    statusDiv.className = '';
+                }, 3000);
+            }
+        }
+        
+        // Initialize the audio editor when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.audioEditor = new AudioEditor();
+        });
+        
+        // Handle window resize for canvas
+        window.addEventListener('resize', () => {
+            if (window.audioEditor && window.audioEditor.canvas) {
+                window.audioEditor.canvas.width = window.audioEditor.canvas.offsetWidth;
+                window.audioEditor.setupCanvas();
+            }
+        });
+    </script>
+</body>
+</html>
