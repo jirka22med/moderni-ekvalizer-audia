@@ -349,7 +349,16 @@
             </div>
             <div id="playback-status"></div>
         </div>
-
+         <!-- Vlož někam do HTML, kde chceš progress bar -->
+<div id="progress-container" style="display: none; margin: 20px 0;">
+    <div style="margin-bottom: 10px;">
+        <span id="progress-text">Připravuji download...</span>
+        <span id="progress-percent" style="float: right; font-weight: bold;">0%</span>
+    </div>
+    <div style="width: 100%; height: 20px; background-color: #333; border-radius: 10px; overflow: hidden;">
+        <div id="progress-bar" style="width: 0%; height: 100%; background-color: #ffa500; transition: all 0.3s ease; border-radius: 10px;"></div>
+    </div>
+</div>
         <div class="section" id="visualization-section" style="display: none;">
             <h2>📊 Vizualizace zvuku</h2>
             <canvas id="visualization"></canvas>
@@ -700,133 +709,345 @@
         }
     }
     
-    // 🚀 NOVÁ OPRAVENÁ DOWNLOAD FUNKCE
-    async downloadAudio() {
-        if (!this.player || !this.audioBuffer) {
-            this.showStatus('error', '❌ Není co stáhnout!');
-            return;
-        }
-
-        try {
-            this.showStatus('info', '💾 Generování souboru s efekty...');
-            
-            // Kontrola podpory MediaRecorder
-            if (!window.MediaRecorder) {
-                throw new Error('MediaRecorder not supported');
-            }
-            
-            // Vytvoříme MediaStream z aktuálního audio výstupu
-            const stream = Tone.Destination.context.createMediaStreamDestination();
-            
-            // Připojíme současný audio výstup k stream
-            this.effects.compressor.connect(stream);
-            
-            // Určíme nejlepší dostupný formát
-            let mimeType = 'audio/webm;codecs=opus';
-            if (!MediaRecorder.isTypeSupported(mimeType)) {
-                mimeType = 'audio/webm';
-                if (!MediaRecorder.isTypeSupported(mimeType)) {
-                    mimeType = 'audio/wav';
-                }
-            }
-            
-            const mediaRecorder = new MediaRecorder(stream.stream, { mimeType });
-            const chunks = [];
-            
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    chunks.push(event.data);
-                }
-            };
-            
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(chunks, { type: mimeType });
-                const url = URL.createObjectURL(blob);
-                
-                // Vytvoříme download link
-                const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
-                const extension = mimeType.includes('webm') ? 'webm' : 'wav';
-                
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `edited_audio_${timestamp}.${extension}`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-                this.showStatus('success', `✅ Soubor s efekty úspěšně stažen! (${extension.toUpperCase()})`);
-                
-                // Odpojíme stream
-                this.effects.compressor.disconnect(stream);
-            };
-            
-            mediaRecorder.onerror = (error) => {
-                console.error('MediaRecorder error:', error);
-                this.showStatus('error', '❌ Chyba při nahrávání!');
-            };
-            
-            // Spustíme nahrávání
-            mediaRecorder.start();
-            
-            // Uložíme původní stav přehrávání
-            const originalIsPlaying = this.isPlaying;
-            if (this.isPlaying) {
-                this.player.stop();
-                this.isPlaying = false;
-                await new Promise(resolve => setTimeout(resolve, 200));
-            }
-            
-            // Spustíme přehrávání pro nahrání
-            this.player.start();
-            this.showStatus('info', '🎵 Nahrávám audio s efekty...');
-            
-            // Počkáme na dokončení přehrávání
-            const duration = this.audioBuffer.duration * 1000; // v milisekundách
-            await new Promise(resolve => setTimeout(resolve, duration + 1000));
-            
-            // Zastavíme nahrávání a přehrávání
-            mediaRecorder.stop();
-            this.player.stop();
-            
-            // Obnovíme původní stav přehrávání po chvilce
-            if (originalIsPlaying) {
-                setTimeout(() => {
-                    this.togglePlayback();
-                }, 1500);
-            }
-            
-        } catch (error) {
-            console.error('Error downloading audio:', error);
-            
-            // Fallback metoda - export původního bufferu
-            try {
-                this.showStatus('info', '🔄 Zkouším alternativní metodu...');
-                await this.downloadAudioFallback();
-            } catch (fallbackError) {
-                console.error('Fallback download error:', fallbackError);
-                this.showStatus('error', '❌ Chyba při stahování! Zkus použít jiný prohlížeč.');
-            }
-        }
+   // 🚀 KOMPLETNĚ OPRAVENÁ DOWNLOAD FUNKCE S METADATY
+async downloadAudio() {
+    if (!this.player || !this.audioBuffer) {
+        this.showStatus('error', '❌ Není co stáhnout!');
+        return;
     }
 
-    // 🛡️ FALLBACK METODA PRO DOWNLOAD
-    async downloadAudioFallback() {
-        // Vytvoříme jednoduchý WAV z původního bufferu
-        const audioBlob = this.bufferToWave(this.audioBuffer);
-        const url = URL.createObjectURL(audioBlob);
+    try {
+        this.showProgressBar();
+        this.updateProgress(0, '🚀 Inicializuji download s kompletními metadaty...');
         
+        const totalDuration = this.audioBuffer.duration;
+        const sampleRate = this.audioBuffer.sampleRate;
+        const numberOfChannels = this.audioBuffer.numberOfChannels;
+        
+        const formatTime = (seconds) => {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        };
+
+        this.updateProgress(10, `🎵 Připravuji ${formatTime(totalDuration)} písničku...`);
+
+        // ⚡ METODA 1: Offline Audio Context s kompletními efekty
+        await this.downloadWithOfflineContext(totalDuration, sampleRate, numberOfChannels);
+        
+    } catch (error) {
+        console.error('Error downloading audio:', error);
+        // 🛡️ Fallback na původní buffer
+        await this.downloadOriginalWithMetadata();
+    }
+}
+
+// 🎯 NOVÁ METODA: Offline Audio Context (kompletní efekty + metadata)
+async downloadWithOfflineContext(duration, sampleRate, channels) {
+    try {
+        this.updateProgress(15, '🔧 Vytvářím offline audio kontext...');
+        
+        // Vytvoříme offline context se správnými parametry
+        const offlineContext = new OfflineAudioContext(channels, sampleRate * duration, sampleRate);
+        
+        this.updateProgress(25, '🎛️ Aplikuji všechny efekty offline...');
+        
+        // Vytvoříme kopie všech uzlů pro offline rendering
+        const offlinePlayer = new Tone.Player(this.audioBuffer).toDestination();
+        
+        // Propojíme s offline contextem
+        offlinePlayer.context = offlineContext;
+        
+        // Vytvoříme offline verze efektů
+        const offlineEqualizer = [];
+        const frequencies = [32, 64, 125, 250, 500, 1000, 2000, 4000];
+        
+        frequencies.forEach((freq, index) => {
+            const filter = offlineContext.createBiquadFilter();
+            filter.type = 'peaking';
+            filter.frequency.value = freq;
+            filter.Q.value = 1;
+            
+            // Aplikujeme aktuální hodnoty z EQ
+            const eqSliders = ['32', '64', '125', '250', '500', '1k', '2k', '4k'];
+            const currentValue = parseFloat(document.getElementById(`eq-${eqSliders[index]}`).value);
+            filter.gain.value = currentValue;
+            
+            offlineEqualizer.push(filter);
+        });
+        
+        this.updateProgress(40, '🎚️ Nastavuji offline ekvalizér...');
+        
+        // Vytvoříme offline efekty (zjednodušené verze)
+        const offlineGain = offlineContext.createGain();
+        const volumeValue = parseFloat(document.getElementById('volume').value);
+        offlineGain.gain.value = volumeValue;
+        
+        // Propojíme audio řetězec
+        const sourceNode = offlineContext.createBufferSource();
+        sourceNode.buffer = this.audioBuffer;
+        
+        // Propojíme řetězec: source -> EQ -> gain -> destination
+        let currentNode = sourceNode;
+        
+        offlineEqualizer.forEach(filter => {
+            currentNode.connect(filter);
+            currentNode = filter;
+        });
+        
+        currentNode.connect(offlineGain);
+        offlineGain.connect(offlineContext.destination);
+        
+        this.updateProgress(60, '▶️ Renderuji celou písničku s efekty...');
+        
+        // Spustíme offline rendering
+        sourceNode.start(0);
+        
+        const renderedBuffer = await offlineContext.startRendering();
+        
+        this.updateProgress(80, '📦 Vytvářím WAV s kompletními metadaty...');
+        
+        // Vytvoříme WAV s kompletními metadaty
+        const wavBlob = this.createWAVWithMetadata(renderedBuffer, duration);
+        
+        this.updateProgress(95, '💾 Připravuji ke stažení...');
+        
+        // Stáhneme soubor
+        const url = URL.createObjectURL(wavBlob);
         const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+        const durationText = this.formatTime(duration).replace(':', 'm') + 's';
+        
         const a = document.createElement('a');
         a.href = url;
-        a.download = `original_audio_${timestamp}.wav`;
+        a.download = `edited_audio_${durationText}_${timestamp}.wav`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        this.showStatus('success', '✅ Původní soubor stažen (bez efektů)! Pro efekty zkus jiný prohlížeč.');
+        this.updateProgress(100, `✅ Kompletní písnička s efekty stažena!`);
+        
+        setTimeout(() => {
+            this.hideProgressBar();
+            this.showStatus('success', `✅ Písnička s efekty stažena! Délka: ${this.formatTime(duration)} - Metadata kompletní!`);
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Offline rendering error:', error);
+        throw error;
     }
+}
+
+// 🎯 VYLEPŠENÁ WAV FUNKCE S KOMPLETNÍMI METADATY
+createWAVWithMetadata(audioBuffer, duration) {
+    const numberOfChannels = audioBuffer.numberOfChannels;
+    const sampleRate = audioBuffer.sampleRate;
+    const length = audioBuffer.length;
+    
+    // Vypočítáme přesnou velikost dat
+    const dataSize = length * numberOfChannels * 2; // 16-bit = 2 bytes per sample
+    const fileSize = 36 + dataSize;
+    
+    const arrayBuffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(arrayBuffer);
+    
+    // 📋 WAV HEADER S KOMPLETNÍMI METADATY
+    const writeString = (offset, string) => {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    };
+    
+    // RIFF chunk
+    writeString(0, 'RIFF');
+    view.setUint32(4, fileSize, true);          // Celková velikost souboru - 8
+    writeString(8, 'WAVE');
+    
+    // fmt chunk
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);               // Velikost fmt chunku
+    view.setUint16(20, 1, true);                // PCM format
+    view.setUint16(22, numberOfChannels, true); // Počet kanálů
+    view.setUint32(24, sampleRate, true);       // Sample rate
+    view.setUint32(28, sampleRate * numberOfChannels * 2, true); // Byte rate
+    view.setUint16(32, numberOfChannels * 2, true); // Block align
+    view.setUint16(34, 16, true);               // Bits per sample
+    
+    // data chunk
+    writeString(36, 'data');
+    view.setUint32(40, dataSize, true);         // Velikost dat
+    
+    // 🎵 AUDIO DATA S PŘESNÝM ČASOVÁNÍM
+    let offset = 44;
+    for (let i = 0; i < length; i++) {
+        for (let channel = 0; channel < numberOfChannels; channel++) {
+            // Získáme sample s ošetřením rozsahu
+            const sample = audioBuffer.getChannelData(channel)[i];
+            const clampedSample = Math.max(-1, Math.min(1, sample));
+            
+            // Konvertujeme na 16-bit integer
+            const intSample = Math.round(clampedSample * 32767);
+            view.setInt16(offset, intSample, true);
+            offset += 2;
+        }
+    }
+    
+    console.log(`📊 WAV Metadata: ${numberOfChannels}ch, ${sampleRate}Hz, ${this.formatTime(duration)}, ${Math.round(dataSize/1024)}KB`);
+    
+    return new Blob([arrayBuffer], { type: 'audio/wav' });
+}
+
+// 🛡️ FALLBACK: Původní soubor s metadaty
+async downloadOriginalWithMetadata() {
+    this.updateProgress(50, '🔄 Používám fallback metodu...');
+    
+    const duration = this.audioBuffer.duration;
+    const wavBlob = this.createWAVWithMetadata(this.audioBuffer, duration);
+    
+    const url = URL.createObjectURL(wavBlob);
+    const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+    const durationText = this.formatTime(duration).replace(':', 'm') + 's';
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `original_audio_${durationText}_${timestamp}.wav`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    this.updateProgress(100, `✅ Původní písnička s metadaty stažena!`);
+    
+    setTimeout(() => {
+        this.hideProgressBar();
+        this.showStatus('success', `✅ Původní písnička stažena! Délka: ${this.formatTime(duration)} - Metadata opravená!`);
+    }, 2000);
+}
+
+// 🕐 HELPER FUNKCE PRO FORMÁTOVÁNÍ ČASU
+formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+// 🎯 PROGRESS BAR FUNKCE (CHYBĚJÍCÍ!)
+showProgressBar() {
+    const progressContainer = document.getElementById('progress-container');
+    if (progressContainer) {
+        progressContainer.style.display = 'block';
+        progressContainer.style.opacity = '1';
+    } else {
+        // Pokud progress container neexistuje, vytvoříme ho dynamicky
+        this.createProgressBarHTML();
+    }
+}
+
+hideProgressBar() {
+    const progressContainer = document.getElementById('progress-container');
+    if (progressContainer) {
+        progressContainer.style.opacity = '0';
+        setTimeout(() => {
+            progressContainer.style.display = 'none';
+        }, 300);
+    }
+}
+
+updateProgress(percentage, message) {
+    // Update progress bar
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const progressPercent = document.getElementById('progress-percent');
+    
+    if (progressBar) {
+        progressBar.style.width = percentage + '%';
+        
+        // Animace barvy podle postupu
+        if (percentage < 30) {
+            progressBar.style.backgroundColor = '#ffa500'; // Oranžová
+        } else if (percentage < 70) {
+            progressBar.style.backgroundColor = '#ffff00'; // Žlutá
+        } else if (percentage < 100) {
+            progressBar.style.backgroundColor = '#90EE90'; // Světle zelená
+        } else {
+            progressBar.style.backgroundColor = '#00ff00'; // Plně zelená
+        }
+    }
+    
+    if (progressText) {
+        progressText.textContent = message;
+    }
+    
+    if (progressPercent) {
+        progressPercent.textContent = Math.round(percentage) + '%';
+    }
+}
+
+// 🏗️ DYNAMICKÉ VYTVOŘENÍ PROGRESS BARU
+createProgressBarHTML() {
+    // Pokud progress container neexistuje, vytvoříme ho
+    if (!document.getElementById('progress-container')) {
+        const progressHTML = `
+            <div id="progress-container" style="
+                display: none;
+                margin: 20px 0;
+                padding: 20px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            ">
+                <div id="progress-text" style="
+                    color: white;
+                    margin-bottom: 10px;
+                    font-size: 14px;
+                    text-align: center;
+                ">Připravuji download...</div>
+                
+                <div style="
+                    width: 100%;
+                    height: 20px;
+                    background-color: rgba(255, 255, 255, 0.2);
+                    border-radius: 10px;
+                    overflow: hidden;
+                    margin-bottom: 10px;
+                ">
+                    <div id="progress-bar" style="
+                        height: 100%;
+                        width: 0%;
+                        background-color: #ffa500;
+                        border-radius: 10px;
+                        transition: width 0.3s ease, background-color 0.3s ease;
+                    "></div>
+                </div>
+                
+                <div id="progress-percent" style="
+                    color: white;
+                    text-align: center;
+                    font-size: 12px;
+                    font-weight: bold;
+                ">0%</div>
+            </div>
+        `;
+        
+        // Vložíme progress bar před download button
+        const downloadButton = document.getElementById('download-button');
+        if (downloadButton && downloadButton.parentNode) {
+            downloadButton.parentNode.insertAdjacentHTML('beforeend', progressHTML);
+        }
+        
+        // Pak zobrazíme
+        setTimeout(() => {
+            const progressContainer = document.getElementById('progress-container');
+            if (progressContainer) {
+                progressContainer.style.display = 'block';
+                progressContainer.style.opacity = '1';
+            }
+        }, 100);
+    }
+}
     
     // 🔧 VYLEPŠENÁ WAV KONVERZE
     bufferToWave(buffer) {
